@@ -1,0 +1,194 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f4;
+    color: #333;
+}
+
+header {
+    background-color: #6200EE;
+    color: #fff;
+    padding: 1.5rem 0;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+nav {
+    background-color: #E0BBE4;
+    padding: 0.8rem 0;
+    text-align: center;
+    border-bottom: 1px solid #c9c9c9;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+nav button {
+    background-color: #9575CD;
+    color: white;
+    padding: 12px 20px;
+    margin: 0 8px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+}
+
+nav button:hover {
+    background-color: #7E57C2;
+}
+
+main {
+    padding: 30px;
+    display: flex;
+    justify-content: center;
+}
+
+section {
+    background-color: #fff;
+    padding: 30px;
+    margin-bottom: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 900px; /* เพิ่มความกว้างสูงสุดของ Section เพื่อให้ตารางมีพื้นที่ */
+    box-sizing: border-box;
+    overflow-x: auto; /* เพิ่มเพื่อให้ตารางเลื่อนได้ถ้าใหญ่เกิน */
+}
+
+.hidden {
+    display: none;
+}
+
+h2 {
+    color: #6200EE;
+    margin-bottom: 25px;
+    text-align: center;
+    font-size: 1.8rem;
+}
+
+form label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #4A4A4A;
+}
+
+form input[type="text"],
+form input[type="date"],
+form textarea {
+    width: calc(100% - 24px); /* หัก padding */
+    padding: 12px;
+    margin-bottom: 20px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 1rem;
+    box-sizing: border-box;
+}
+
+form textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+form button {
+    background-color: #00C853;
+    color: white;
+    padding: 12px 25px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+    display: block;
+    width: 100%;
+    max-width: 200px;
+    margin: 0 auto;
+}
+
+form button:hover {
+    background-color: #00B34C;
+}
+
+/* ******************************************************************* */
+/* *** ปรับปรุง CSS สำหรับตารางโดยเฉพาะ *** */
+/* ******************************************************************* */
+table {
+    width: 100%;
+    table-layout: fixed; /* สำคัญ: ทำให้คอลัมน์มีขนาดคงที่และไม่ถูกดัน */
+    border-collapse: collapse;
+    margin-top: 30px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    overflow: hidden; /* เพื่อให้ border-radius แสดงผล */
+}
+
+table thead th {
+    background-color: #6200EE;
+    color: white;
+    padding: 15px 10px; /* ลด padding แนวข้างนิดหน่อย */
+    text-align: left;
+    font-size: 1.0rem; /* ปรับขนาดฟอนต์หัวข้อเล็กน้อย */
+    white-space: nowrap; /* ป้องกันการตัดคำในหัวข้อ */
+    overflow: hidden;
+    text-overflow: ellipsis; /* แสดง ... ถ้าข้อความยาวเกิน */
+}
+
+table tbody td {
+    padding: 12px 10px; /* ปรับ padding ใน cell */
+    border-bottom: 1px solid #ddd;
+    word-wrap: break-word; /* ให้ตัดคำถ้าคำยาวเกิน */
+    color: #333;
+    font-size: 0.9rem; /* ปรับขนาดฟอนต์เนื้อหาเล็กน้อย */
+    overflow: hidden;
+    text-overflow: ellipsis; /* แสดง ... ถ้าข้อความยาวเกิน */
+}
+
+table tbody tr:nth-child(even) {
+    background-color: #f8f8f8;
+}
+
+/* กำหนดความกว้างของแต่ละคอลัมน์ (ปรับใหม่) */
+/* *** นี่คือส่วนที่ปรับความกว้างของคอลัมน์ *** */
+
+table thead th:nth-child(1), /* วันที่คืน */
+table tbody td:nth-child(1) {
+    width: 15%; /* 18% ของความกว้างตาราง */
+}
+
+table thead th:nth-child(2), /* เวลาที่คืน */
+table tbody td:nth-child(2) {
+    width: 15%; /* 15% ของความกว้างตาราง */
+}
+
+table thead th:nth-child(3), /* SN ที่คืน (คอลัมน์ใหม่) */
+table tbody td:nth-child(3) {
+    width: 19%; /* เพิ่มความกว้าง */
+}
+
+table thead th:nth-child(4), /* ชื่อผู้คืน (คอลัมน์ใหม่) */
+table tbody td:nth-child(4) {
+    width: 19%; /* เพิ่มความกว้าง */
+}
+
+.message {
+    margin-top: 20px;
+    padding: 15px;
+    border-radius: 8px;
+    font-weight: bold;
+    text-align: center;
+}
+
+.message.success {
+    background-color: #E8F5E9;
+    color: #2E7D32;
+    border: 1px solid #A5D6A7;
+}
+
+.message.error {
+    background-color: #FFEBEE;
+    color: #D32F2F;
+    border: 1px solid #EF9A9A;
+}

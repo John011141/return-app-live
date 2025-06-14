@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบคืนของเสีย</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body onload="setCurrentDate()">
+    <header>
+        <h1>ระบบคืนของเสีย</h1>
+    </header>
+    <nav>
+        <button onclick="showSection('return-form-section')">คืนของเสีย</button>
+        <button onclick="showSection('return-history-section')">ประวัติการคืนของเสีย</button>
+    </nav>
+
+    <main>
+        <section id="return-form-section" class="active">
+            <h2>คืนของเสีย TVS,INNO,TrueID</h2>
+            <form id="return-item-form">
+                <label for="return-date">วันที่คืนของเสีย:</label>
+                <input type="date" id="return-date" required><br>
+
+                <label for="returner-name">ชื่อ-นามสกุล ผู้คืน:</label>
+                <input type="text" id="returner-name" placeholder="คำตอบของคุณ" required><br>
+
+                <label for="sn-list">SN ที่คืน (ทีละหลายตัว, คั่นด้วย Enter):</label>
+                <textarea id="sn-list" rows="10" placeholder="SN12345
+SN67890
+SNABCDE
+..." required></textarea><br>
+
+                <button type="submit">ส่ง</button>
+            </form>
+            <div id="form-message" class="message"></div>
+        </section>
+
+        <section id="return-history-section" class="hidden">
+            <h2>ประวัติการคืนของเสีย</h2>
+            <table id="history-table">
+                <thead>
+                    <tr>
+                        <th>วันที่คืน</th>
+                        <th>เวลาที่คืน</th>
+                        <th>ชื่อผู้คืน</th>
+                        <th>SN ที่คืน</th> </tr>
+                </thead>
+                <tbody>
+                    </tbody>
+            </table>
+            <div id="history-message" class="message"></div>
+            <button id="clear-all-history-button" type="button" style="background-color: #f44336; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; margin-top: 20px; display: block; width: fit-content; margin-left: auto; margin-right: auto;">
+                ล้างประวัติทั้งหมด
+            </button>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
