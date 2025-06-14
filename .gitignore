@@ -6,4 +6,4 @@ yarn-debug.log*
 yarn-error.log*
 .DS_Store
 # ถ้าคุณใช้ Google Sheets API และมีไฟล์ JSON Key:
-myreturnappsheetsapi-471f2ab5f1bb.json // เปลี่ยนเป็นชื่อไฟล์ JSON Key ของคุณเป๊ะๆ (สำคัญมาก! ห้ามอัปโหลดไฟล์นี้)
+myreturnappsheetsapi-73cd458ff9e1.json
