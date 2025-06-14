@@ -12,7 +12,6 @@ const path = require('path'); // path ยังคงจำเป็นหาก
 let auth, sheets;
 if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
     try {
-        // *** แก้ไขตรงนี้ ***
         // ถ้า GOOGLE_APPLICATION_CREDENTIALS เป็นเนื้อหา JSON (ไม่ใช่ Path ไฟล์)
         // ควรใช้ credentials โดยตรง แทน keyFile
         const credentialsContent = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS);
