@@ -2,57 +2,31 @@ require('dotenv').config();
 
 const express = require('express');
 const mongoose = require('mongoose');
-const { google } = require('googleapis'); // เพิ่มการเรียกใช้ googleapis
+
+// ไม่ต้องประกาศ Google Sheets API client ที่นี่แล้ว เพราะย้ายไปที่ returnRoutes.js
+// const { google } = require('googleapis');
+// const path = require('path');
+// let auth, sheets;
+// if (process.env.GOOGLE_APPLICATION_CREDENTIALS) { ... }
+
+// require returnRoutes แบบปกติ เพราะตอนนี้ returnRoutes จะจัดการ Google Sheets API เองภายในไฟล์
+const returnRoutes = require('./routes/returnRoutes'); // <--- จุดสำคัญ: ไม่ต้องส่ง sheets object แล้ว
 
 const app = express();
-const PORT = process.env.PORT || 10000; // Render มักจะใช้ port 10000
+const PORT = process.env.PORT || 3000;
 
-console.log('--- app.js STARTING (v2) ---');
+console.log('--- app.js STARTING ---');
 console.log('PORT from .env:', PORT);
-console.log('Node.js version:', process.version);
-
-// --- Google Sheets API Authentication ---
-// ส่วนนี้จะทำการตั้งค่าการเชื่อมต่อกับ Google Sheets API เพียงครั้งเดียว
-console.log('Setting up Google Sheets API client...');
-
-const credentialsJson = process.env.GOOGLE_CREDENTIALS_JSON;
-if (!credentialsJson) {
-    // หากไม่พบค่า credentials ใน Environment Variable ให้หยุดการทำงานทันที
-    console.error('*** FATAL ERROR: The GOOGLE_CREDENTIALS_JSON environment variable is not set. ***');
-    process.exit(1);
-}
-
-let credentials;
-try {
-    // แปลงค่า JSON string ที่ได้จาก .env ให้กลายเป็น Object
-    credentials = JSON.parse(credentialsJson);
-} catch (e) {
-    console.error('*** FATAL ERROR: Failed to parse GOOGLE_CREDENTIALS_JSON. Make sure it is a valid JSON string. ***', e);
-    process.exit(1);
-}
-
-// สร้างออปเจ็กต์สำหรับยืนยันตัวตน
-const auth = new google.auth.GoogleAuth({
-    credentials, // ใช้ credentials ที่เป็น Object โดยตรง
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-});
-
-// สร้าง client สำหรับเรียกใช้ Sheets API
-const sheets = google.sheets({ version: 'v4', auth });
-console.log('Google Sheets API client initialized.');
-// --- End of Google Sheets Setup ---
-
 
 // Middleware
-console.log('Setting up middleware...');
-app.use(express.json());
-app.use(express.static('public'));
+app.use(express.json()); // สำหรับ Parse JSON body
 
-// API Routes
-// *** จุดสำคัญ: เราจะส่ง sheets object ที่สร้างไว้เข้าไปให้ไฟล์ routes ***
-const returnRoutes = require('./routes/returnRoutes')(sheets);
-console.log('Setting up API routes...');
-app.use('/api/returns', returnRoutes);
+// API Routes (ต้องอยู่ก่อน express.static)
+app.use('/api/returns', returnRoutes); // <--- จุดสำคัญ: ใช้ returnRoutes ที่ Export มาตรงๆ
+
+// Static Files (อยู่ด้านล่าง API routes)
+console.log('Setting up static files...');
+app.use(express.static('public'));
 
 
 // เชื่อมต่อ MongoDB
@@ -63,9 +37,9 @@ mongoose.connect(process.env.MONGO_URI)
         console.log('MongoDB connected successfully');
     })
     .catch(err => {
-        console.error('*** MongoDB connection FAILED! (v2) ***');
+        console.error('*** MongoDB connection FAILED! ***');
         console.error('Error details:', err);
-        process.exit(1);
+        // process.exit(1);
     });
 
 // เริ่มต้น Server
@@ -74,4 +48,4 @@ app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
 
-console.log('--- app.js END of main script (v2) ---');
+console.log('--- app.js END of main script ---');
