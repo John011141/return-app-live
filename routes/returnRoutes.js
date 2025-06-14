@@ -1,20 +1,20 @@
 const express = require('express');
-const router = express.Router();
+const router = express.Router(); // <--- ต้องประกาศ router ตรงนี้
+
 const ReturnItem = require('../models/ReturnItem');
 
-// สำหรับการเข้าถึง Environment Variables
 require('dotenv').config();
 
-// สำหรับ Google Sheets API
-// *** ส่วนนี้คือการตั้งค่า Google Sheets API Client ***
-// ต้องมั่นใจว่า GOOGLE_APPLICATION_CREDENTIALS ถูกตั้งค่าใน .env และไฟล์ JSON Key อยู่ในตำแหน่งที่ถูกต้อง
+// สำหรับ Google Sheets API (ต้องตรวจสอบว่าใช้หรือไม่)
+// ถ้าไม่ใช้ Google Sheets API ในตอนนี้ ให้คอมเมนต์ Block นี้ทั้งหมด (/* ... */)
 const { google } = require('googleapis');
 const path = require('path');
 
-let auth, sheets;
+let auth, sheets; // ประกาศตัวแปรระดับ Module
 if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
     try {
-        const keyFilePath = path.join(__dirname, '..', process.env.GOOGLE_APPLICATION_CREDENTIALS);
+        // ใช้ path.resolve เพื่อให้แน่ใจว่า path ถูกต้องบน Render
+        const keyFilePath = path.resolve(process.env.GOOGLE_APPLICATION_CREDENTIALS);
         auth = new google.auth.GoogleAuth({
             keyFile: keyFilePath,
             scopes: ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/spreadsheets.readonly'],
@@ -28,29 +28,30 @@ if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
     console.warn('GOOGLE_APPLICATION_CREDENTIALS not set in .env. Google Sheets upload will not work.');
 }
 
+
 // ฟังก์ชันสำหรับเขียนข้อมูล 1 แถวลง Google Sheet
 const appendRowToGoogleSheet = async (sheetId, sheetName, rowData) => {
-    if (!sheets) { // ตรวจสอบว่า sheets client ถูก initialized หรือไม่
-        console.error("Google Sheets API client not initialized. Cannot append row.");
+    // ต้องตรวจสอบ sheets object ที่ถูกประกาศและ initialize ในไฟล์นี้ (returnRoutes.js)
+    if (!sheets) { 
+        console.error("Google Sheets API client not initialized in returnRoutes.js. Cannot append row.");
         return false;
     }
     try {
         // ไม่จำเป็นต้องเรียก auth.getClient() และกำหนด sheets.context._options.auth ที่นี่แล้ว
-        // เพราะ auth ถูกตั้งค่าในการ initialize 'sheets' object แล้ว
+        // เพราะ sheets object ถูก initialize ด้วย 'auth' object ที่ถูกต้องใน if block ด้านบน
         
         const response = await sheets.spreadsheets.values.append({
             spreadsheetId: sheetId,
-            range: `${sheetName}!A:A`, // ให้ Sheets หาแถวว่างสุดท้ายในคอลัมน์ A เป็นต้นไป
-            valueInputOption: 'USER_ENTERED', // แนะนำให้ใช้ USER_ENTERED เพื่อให้ Sheets ตีความวันที่/ตัวเลขได้ถูกต้อง
+            range: `${sheetName}!A:A`,
+            valueInputOption: 'USER_ENTERED',
             insertDataOption: 'INSERT_ROWS',
             resource: {
-                values: [rowData], // ข้อมูลที่จะเขียน (เป็น Array ของ Array)
+                values: [rowData],
             },
         });
         console.log(`Appended row to Google Sheet ${sheetId}/${sheetName}:`, response.data.updates.updatedRange);
         return true;
     } catch (error) {
-        // แสดง error message ที่มาจาก Google API โดยตรง
         console.error(`Failed to append row to Google Sheet ${sheetId}/${sheetName}:`, error.message, error.response ? error.response.data : '');
         return false;
     }
@@ -62,9 +63,8 @@ const asyncHandler = fn => (req, res, next) => {
     Promise.resolve(fn(req, res, next)).catch(next);
 };
 
-// --- API Endpoints สำหรับจัดการของเสีย (Return Item Management) ---
+// --- API Endpoints ---
 
-// 1. รับข้อมูลการคืนของเสียทั้งหมด (Get All Return History) - พร้อมช่องค้นหา SN
 router.get('/', asyncHandler(async (req, res) => {
     const { searchSn } = req.query;
 
@@ -77,7 +77,6 @@ router.get('/', asyncHandler(async (req, res) => {
     res.json(returnedItems);
 }));
 
-// 2. เพิ่มรายการคืนของเสียใหม่ (Add New Return - รองรับหลาย SN)
 router.post('/', asyncHandler(async (req, res) => {
     const { returnerName, serialNumbers } = req.body;
 
@@ -120,14 +119,14 @@ router.post('/', asyncHandler(async (req, res) => {
             });
 
             // *** ส่วนการเขียนลง Google Sheet ***
-            const sheetId = process.env.GOOGLE_SHEET_HISTORY_ID; // ดึง Sheet ID จาก .env
-            const sheetName = 'ประวัติการคืนของเสีย'; // ชื่อชีทใน Google Sheet (ต้องตรงเป๊ะ)
+            const sheetId = process.env.GOOGLE_SHEET_HISTORY_ID;
+            const sheetName = 'ประวัติการคืนของเสีย';
             const returnedDateObj = new Date(newReturnItem.returnedDate);
 
-            if (sheetId && sheets) { // ตรวจสอบว่าตั้งค่า Google Sheet ID และ client initialized
+            if (sheetId && sheets) { // ตรวจสอบว่า sheets object ถูก initialize ในไฟล์นี้
                 const rowData = [
-                    returnedDateObj.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }), // Format วันที่
-                    returnedDateObj.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }), // Format เวลา
+                    returnedDateObj.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }),
+                    returnedDateObj.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
                     newReturnItem.returnerName,
                     newReturnItem.serialNumber
                 ];
@@ -135,8 +134,10 @@ router.post('/', asyncHandler(async (req, res) => {
                 if (!appended) {
                     errors.push(`Failed to append SN "${trimmedSn}" to Google Sheet.`);
                 }
-            } else {
-                console.warn(`Google Sheet ID not set or Sheets client not initialized for SN "${trimmedSn}". Skipping Google Sheet append.`);
+            } else if (sheetId && !sheets) { // กรณีมี Sheet ID แต่ sheets client ไม่พร้อม
+                console.warn(`Google Sheet ID set but Sheets client not initialized for SN "${trimmedSn}". Skipping Google Sheet append.`);
+            } else { // กรณีไม่มี Sheet ID เลย
+                console.warn(`Google Sheet ID not set. Skipping Google Sheet append for SN "${trimmedSn}".`);
             }
 
         } catch (dbError) {
@@ -154,7 +155,6 @@ router.post('/', asyncHandler(async (req, res) => {
     });
 }));
 
-// 3. แก้ไขรายการคืนของเสีย (Update Return Item) - ไม่ได้ใช้ใน Frontend UI นี้
 router.put('/:id', asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { returnerName, serialNumber, returnedDate, notes } = req.body;
@@ -165,7 +165,6 @@ router.put('/:id', asyncHandler(async (req, res) => {
     res.json(updatedItem);
 }));
 
-// 4. ล้างประวัติการคืนของเสียทั้งหมด
 router.delete('/clear-all', asyncHandler(async (req, res) => {
     const { password } = req.body;
 
@@ -185,5 +184,4 @@ router.delete('/clear-all', asyncHandler(async (req, res) => {
     res.json({ message: `ล้างประวัติการคืนของเสียสำเร็จ ${result.deletedCount} รายการ.` });
 }));
 
-
-module.exports = router;
+module.exports = router; // <--- Export router ตรงๆ
