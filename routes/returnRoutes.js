@@ -14,6 +14,9 @@ let auth, sheets; // ประกาศตัวแปรระดับ Module
 if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
     try {
         // ใช้ path.resolve เพื่อให้แน่ใจว่า path ถูกต้องบน Render
+        // Render จะรันโค้ดจาก /opt/render/project/src
+        // ถ้าไฟล์ JSON Key อยู่ใน root project (src) ต้องใช้ path.resolve()
+        // ถ้าอยู่ในโฟลเดอร์ย่อย (เช่น src/keys/my-key.json) ต้องปรับ path
         const keyFilePath = path.resolve(process.env.GOOGLE_APPLICATION_CREDENTIALS);
         auth = new google.auth.GoogleAuth({
             keyFile: keyFilePath,
@@ -42,11 +45,11 @@ const appendRowToGoogleSheet = async (sheetId, sheetName, rowData) => {
         
         const response = await sheets.spreadsheets.values.append({
             spreadsheetId: sheetId,
-            range: `${sheetName}!A:A`,
-            valueInputOption: 'USER_ENTERED',
-            insertDataOption: 'INSERT_ROWS',
+            range: `${sheetName}!A:A`, // ให้ Sheets หาแถวว่างสุดท้ายในคอลัมน์ A เป็นต้นไป
+            valueInputOption: 'USER_ENTERED', // แนะนำให้ใช้ USER_ENTERED เพื่อให้ Sheets ตีความวันที่/ตัวเลขได้ถูกต้อง
+            insertDataOption: 'INSERT_ROWS', // แทรกเป็นแถวใหม่
             resource: {
-                values: [rowData],
+                values: [rowData], // ข้อมูลที่จะเขียน (เป็น Array ของ Array)
             },
         });
         console.log(`Appended row to Google Sheet ${sheetId}/${sheetName}:`, response.data.updates.updatedRange);
