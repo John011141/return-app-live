@@ -41,3 +41,16 @@ app.listen(PORT, () => {
 });
 
 console.log('--- app.js END of main script (v2) ---'); // LOG 15
+// ในฟังก์ชันที่ทำหน้าที่ส่งข้อมูลไป Google Sheets
+async function sendDataToSheet(data) {
+  console.log('--- 1. ENTERED sendDataToSheet function ---'); // <-- เพิ่มบรรทัดนี้
+  console.log('Data received:', data); // <-- เพิ่มบรรทัดนี้
+
+  try {
+    // ... โค้ดที่ใช้ google.sheets.spreadsheets.values.append อยู่ตรงนี้ ...
+
+    console.log('--- 2. SUCCESSFULLY APPENDED TO SHEET ---'); // <-- เพิ่มบรรทัดนี้หลัง append สำเร็จ
+  } catch (err) {
+    console.error('--- 3. ERROR while appending to sheet ---', err); // <-- เพิ่มบรรทัดนี้ใน catch block
+  }
+}
