@@ -7,16 +7,14 @@ require('dotenv').config();
 
 // สำหรับ Google Sheets API
 const { google } = require('googleapis');
-const path = require('path'); // path ยังคงจำเป็นหากใช้ keyFile
+const path = require('path');
 
 let auth, sheets;
 if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
     try {
-        // ถ้า GOOGLE_APPLICATION_CREDENTIALS เป็นเนื้อหา JSON (ไม่ใช่ Path ไฟล์)
-        // ควรใช้ credentials โดยตรง แทน keyFile
         const credentialsContent = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS);
         auth = new google.auth.GoogleAuth({
-            credentials: credentialsContent, // ใช้ credentials object โดยตรง
+            credentials: credentialsContent,
             scopes: ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/spreadsheets.readonly'],
         });
         sheets = google.sheets({ version: 'v4', auth });
@@ -31,6 +29,7 @@ if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
     console.warn('GOOGLE_APPLICATION_CREDENTIALS not set in .env. Google Sheets upload will not work.');
 }
 
+
 // ฟังก์ชันสำหรับเขียนข้อมูล 1 แถวลง Google Sheet
 const appendRowToGoogleSheet = async (sheetId, sheetName, rowData) => {
     if (!sheets) { 
@@ -38,15 +37,13 @@ const appendRowToGoogleSheet = async (sheetId, sheetName, rowData) => {
         return false;
     }
     try {
-        // ไม่ต้องเรียก auth.getClient() และกำหนด sheets.context._options.auth ที่นี่แล้ว
-        // เพราะ 'sheets' object ถูก initialize พร้อม 'auth' ที่ถูกต้องแล้ว
         const response = await sheets.spreadsheets.values.append({
             spreadsheetId: sheetId,
-            range: `${sheetName}!A:A`, // ให้ Sheets หาแถวว่างสุดท้ายในคอลัมน์ A เป็นต้นไป
-            valueInputOption: 'USER_ENTERED', // แนะนำให้ใช้ USER_ENTERED เพื่อให้ Sheets ตีความวันที่/ตัวเลขได้ถูกต้อง
-            insertDataOption: 'INSERT_ROWS', // แทรกเป็นแถวใหม่
+            range: `${sheetName}!A:A`,
+            valueInputOption: 'USER_ENTERED',
+            insertDataOption: 'INSERT_ROWS',
             resource: {
-                values: [rowData], // ข้อมูลที่จะเขียน (เป็น Array ของ Array)
+                values: [rowData],
             },
         });
         console.log(`Appended row to Google Sheet ${sheetId}/${sheetName}:`, response.data.updates.updatedRange);
@@ -123,10 +120,15 @@ router.post('/', asyncHandler(async (req, res) => {
             const sheetName = 'ประวัติการคืนของเสีย'; // ตรวจสอบชื่อชีทใน Google Sheet (ต้องตรงเป๊ะ)
             const returnedDateObj = new Date(newReturnItem.returnedDate);
 
+            // Options สำหรับ Date/Time ใน Local Thai Time
+            const thaiDateOptions = { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Asia/Bangkok' };
+            const thaiTimeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZone: 'Asia/Bangkok' }; // hour12: false เพื่อให้เป็น 24hr format
+
             if (sheetId && sheets) { // ตรวจสอบว่าตั้งค่า Google Sheet ID และ client initialized
                 const rowData = [
-                    returnedDateObj.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }),
-                    returnedDateObj.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+                    // ใช้ 'en-CA' สำหรับ yyyy-MM-dd เพื่อให้ Google Sheet ตีความเป็นวันที่ได้ง่ายขึ้น
+                    returnedDateObj.toLocaleDateString('en-CA', thaiDateOptions), 
+                    returnedDateObj.toLocaleTimeString('th-TH', thaiTimeOptions), 
                     newReturnItem.returnerName,
                     newReturnItem.serialNumber
                 ];
