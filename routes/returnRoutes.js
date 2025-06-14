@@ -1,48 +1,46 @@
 const express = require('express');
-const router = express.Router(); // <--- ต้องประกาศ router ตรงนี้และใช้มัน
+const router = express.Router(); // <--- ประกาศ router ที่นี่
 
 const ReturnItem = require('../models/ReturnItem');
 
 require('dotenv').config();
 
-// สำหรับ Google Sheets API (ต้องตรวจสอบว่าใช้หรือไม่)
-// ถ้าไม่ใช้ Google Sheets API ในตอนนี้ ให้คอมเมนต์ Block นี้ทั้งหมด (/* ... */)
+// สำหรับ Google Sheets API
 const { google } = require('googleapis');
-const path = require('path');
+const path = require('path'); // path ยังคงจำเป็นหากใช้ keyFile
 
-let auth, sheets; // ประกาศตัวแปรระดับ Module
+let auth, sheets;
 if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
     try {
-        // ใช้ path.resolve เพื่อให้แน่ใจว่า path ถูกต้องบน Render
-        // Render จะรันโค้ดจาก /opt/render/project/src
-        // ถ้าไฟล์ JSON Key อยู่ใน root project (src) ต้องใช้ path.resolve()
-        // ถ้าอยู่ในโฟลเดอร์ย่อย (เช่น src/keys/my-key.json) ต้องปรับ path
-        const keyFilePath = path.resolve(process.env.GOOGLE_APPLICATION_CREDENTIALS);
+        // *** แก้ไขตรงนี้ ***
+        // ถ้า GOOGLE_APPLICATION_CREDENTIALS เป็นเนื้อหา JSON (ไม่ใช่ Path ไฟล์)
+        // ควรใช้ credentials โดยตรง แทน keyFile
+        const credentialsContent = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS);
         auth = new google.auth.GoogleAuth({
-            keyFile: keyFilePath,
+            credentials: credentialsContent, // ใช้ credentials object โดยตรง
             scopes: ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/spreadsheets.readonly'],
         });
         sheets = google.sheets({ version: 'v4', auth });
         console.log('Google Sheets API client initialized.');
     } catch (error) {
         console.error('Error initializing Google Sheets API client:', error.message);
+        if (error instanceof SyntaxError) {
+            console.error('Possible cause: GOOGLE_APPLICATION_CREDENTIALS environment variable is not valid JSON.');
+        }
     }
 } else {
     console.warn('GOOGLE_APPLICATION_CREDENTIALS not set in .env. Google Sheets upload will not work.');
 }
 
-
 // ฟังก์ชันสำหรับเขียนข้อมูล 1 แถวลง Google Sheet
 const appendRowToGoogleSheet = async (sheetId, sheetName, rowData) => {
-    // ต้องตรวจสอบ sheets object ที่ถูกประกาศและ initialize ในไฟล์นี้ (returnRoutes.js)
     if (!sheets) { 
-        console.error("Google Sheets API client not initialized in returnRoutes.js. Cannot append row.");
+        console.error("Google Sheets API client not initialized. Cannot append row.");
         return false;
     }
     try {
-        // ไม่จำเป็นต้องเรียก auth.getClient() และกำหนด sheets.context._options.auth ที่นี่แล้ว
-        // เพราะ sheets object ถูก initialize ด้วย 'auth' object ที่ถูกต้องใน if block ด้านบน
-        
+        // ไม่ต้องเรียก auth.getClient() และกำหนด sheets.context._options.auth ที่นี่แล้ว
+        // เพราะ 'sheets' object ถูก initialize พร้อม 'auth' ที่ถูกต้องแล้ว
         const response = await sheets.spreadsheets.values.append({
             spreadsheetId: sheetId,
             range: `${sheetName}!A:A`, // ให้ Sheets หาแถวว่างสุดท้ายในคอลัมน์ A เป็นต้นไป
@@ -121,13 +119,12 @@ router.post('/', asyncHandler(async (req, res) => {
                 returnedDate: newReturnItem.returnedDate
             });
 
-            // *** หากต้องการเขียนลง Google Sheet: ให้ Uncomment โค้ดส่วนนี้ ***
-            /*
+            // *** ส่วนการเขียนลง Google Sheet: โค้ดที่ใช้งานแล้ว ***
             const sheetId = process.env.GOOGLE_SHEET_HISTORY_ID;
-            const sheetName = 'ประวัติการคืนของเสีย';
+            const sheetName = 'ประวัติการคืนของเสีย'; // ตรวจสอบชื่อชีทใน Google Sheet (ต้องตรงเป๊ะ)
             const returnedDateObj = new Date(newReturnItem.returnedDate);
 
-            if (sheetId && sheets) {
+            if (sheetId && sheets) { // ตรวจสอบว่าตั้งค่า Google Sheet ID และ client initialized
                 const rowData = [
                     returnedDateObj.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }),
                     returnedDateObj.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
@@ -138,10 +135,12 @@ router.post('/', asyncHandler(async (req, res) => {
                 if (!appended) {
                     errors.push(`Failed to append SN "${trimmedSn}" to Google Sheet.`);
                 }
-            } else {
-                console.warn(`Google Sheet ID not set or Sheets client not initialized for SN "${trimmedSn}". Skipping Google Sheet append.`);
+            } else if (sheetId && !sheets) { // กรณีมี Sheet ID แต่ sheets client ไม่พร้อม
+                console.warn(`Google Sheet ID set but Sheets client not initialized for SN "${trimmedSn}". Skipping Google Sheet append.`);
+            } else { // กรณีไม่มี Sheet ID เลย
+                console.warn(`Google Sheet ID not set. Skipping Google Sheet append for SN "${trimmedSn}".`);
             }
-            */
+            // *** สิ้นสุดส่วน Google Sheet ***
 
         } catch (dbError) {
             errors.push(`Error adding return for SN "${trimmedSn}": ${dbError.message}`);
