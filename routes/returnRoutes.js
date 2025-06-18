@@ -7,24 +7,53 @@ require('dotenv').config();
 
 // สำหรับ Google Sheets API (หากคุณต้องการใช้ฟังก์ชันนี้)
 const { google } = require('googleapis');
-const path = require('path');
+// ไม่ต้องใช้ path เพราะเราจะดึง credentials จาก env vars โดยตรง
+// const path = require('path'); // บรรทัดนี้จะถูกลบทิ้งไป
 
 let auth, sheets;
-if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+
+// ***** เริ่มต้นส่วนที่แก้ไขสำหรับ Google Sheets API Initialization *****
+// บล็อกโค้ดเก่าที่ใช้ GOOGLE_APPLICATION_CREDENTIALS จะถูกลบออกไปทั้งหมด
+// แทนที่ด้วยการดึงค่าจาก Environment Variables โดยตรง
+if (process.env.GCP_PRIVATE_KEY && process.env.GCP_CLIENT_EMAIL &&
+    process.env.GCP_PROJECT_ID && process.env.GCP_PRIVATE_KEY_ID &&
+    process.env.GCP_CLIENT_ID && process.env.GCP_AUTH_URI &&
+    process.env.GCP_TOKEN_URI && process.env.GCP_AUTH_PROVIDER_X509_CERT_URL &&
+    process.env.GCP_CLIENT_X509_CERT_URL) {
     try {
-        const keyFilePath = path.join(__dirname, '..', process.env.GOOGLE_APPLICATION_CREDENTIALS);
+        const credentials = {
+            type: process.env.GCP_TYPE || 'service_account',
+            project_id: process.env.GCP_PROJECT_ID,
+            private_key_id: process.env.GCP_PRIVATE_KEY_ID,
+            // สำคัญ: แปลง \n กลับมา เพราะ Render อาจเก็บเป็น \\n
+            private_key: process.env.GCP_PRIVATE_KEY.replace(/\\n/g, '\n'),
+            client_email: process.env.GCP_CLIENT_EMAIL,
+            client_id: process.env.GCP_CLIENT_ID,
+            auth_uri: process.env.GCP_AUTH_URI,
+            token_uri: process.env.GCP_TOKEN_URI,
+            auth_provider_x509_cert_url: process.env.GCP_AUTH_PROVIDER_X509_CERT_URL,
+            client_x509_cert_url: process.env.GCP_CLIENT_X509_CERT_URL,
+            universe_domain: process.env.GCP_UNIVERSE_DOMAIN || 'googleapis.com' // ใช้ค่าจาก env หรือ default
+        };
+
         auth = new google.auth.GoogleAuth({
-            keyFile: keyFilePath,
+            credentials, // ใช้ credentials object แทน keyFile
             scopes: ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/spreadsheets.readonly'],
         });
         sheets = google.sheets({ version: 'v4', auth });
-        console.log('Google Sheets API client initialized.');
+        console.log('Google Sheets API client initialized using Environment Variables.');
     } catch (error) {
-        console.error('Error initializing Google Sheets API client:', error.message);
+        console.error('Error initializing Google Sheets API client from Env Vars:', error.message);
+        // เพิ่ม log สำหรับ debugging หาก credentials มีปัญหา
+        if (error.response && error.response.data) {
+            console.error('Google Auth Error Details:', error.response.data);
+        }
     }
 } else {
-    console.warn('GOOGLE_APPLICATION_CREDENTIALS not set in .env. Google Sheets upload will not work.');
+    console.warn('One or more required GCP environment variables (GCP_PRIVATE_KEY, GCP_CLIENT_EMAIL, etc.) are not set. Google Sheets upload will not work.');
 }
+// ***** สิ้นสุดส่วนที่แก้ไขสำหรับ Google Sheets API Initialization *****
+
 
 // ฟังก์ชันสำหรับเขียนข้อมูล 1 แถวลง Google Sheet
 const appendRowToGoogleSheet = async (sheetId, sheetName, rowData) => {
@@ -39,16 +68,17 @@ const appendRowToGoogleSheet = async (sheetId, sheetName, rowData) => {
         const response = await sheets.spreadsheets.values.append({
             spreadsheetId: sheetId,
             range: `${sheetName}!A:A`,
-            valueInputOption: 'RAW',
+            valueInputOption: 'RAW', // 'RAW' จะรักษาประเภทข้อมูลที่เราส่งไป ถ้าส่ง string ไป มันก็จะเก็บเป็น string
             insertDataOption: 'INSERT_ROWS',
             resource: {
                 values: [rowData],
             },
         });
-        console.log(`Appended row to Google Sheet <span class="math-inline">\{sheetId\}/</span>{sheetName}:`, response.data.updates.updatedRange);
+        // ลบ span class ออก เพราะมันแสดงผลเป็น raw text ใน log
+        console.log(`Appended row to Google Sheet ${sheetId}/${sheetName}:`, response.data.updates.updatedRange);
         return true;
     } catch (error) {
-        console.error(`Failed to append row to Google Sheet <span class="math-inline">\{sheetId\}/</span>{sheetName}:`, error.message, error.response ? error.response.data : '');
+        console.error(`Failed to append row to Google Sheet ${sheetId}/${sheetName}:`, error.message, error.response ? error.response.data : '');
         return false;
     }
 };
@@ -87,6 +117,8 @@ router.post('/', asyncHandler(async (req, res) => {
             continue;
         }
 
+        // ตรวจสอบว่า serialNumber นี้ถูกคืนไปแล้วหรือไม่
+        // ตรวจสอบจาก trimmedSn ที่เป็น String อยู่แล้ว
         const existingReturn = await ReturnItem.findOne({ serialNumber: trimmedSn });
 
         if (existingReturn) {
@@ -96,8 +128,11 @@ router.post('/', asyncHandler(async (req, res) => {
         }
 
         try {
+            // สร้าง ReturnItem ใหม่
             const newReturnItem = new ReturnItem({
                 returnerName: returnerName,
+                // ตรวจสอบให้แน่ใจว่า serialNumber ที่เก็บใน MongoDB เป็น String
+                // จาก Schema ของ ReturnItem ก็ควรจะเป็น String อยู่แล้ว
                 serialNumber: trimmedSn,
                 returnedDate: new Date()
             });
@@ -109,17 +144,17 @@ router.post('/', asyncHandler(async (req, res) => {
                 returnedDate: newReturnItem.returnedDate
             });
 
-            // *** เพิ่มโค้ดตรงนี้: เขียนลง Google Sheet ***
+            // *** ส่วนที่แก้ไข: เขียนลง Google Sheet ***
             const sheetId = process.env.GOOGLE_SHEET_HISTORY_ID;
             const sheetName = 'ประวัติการคืนของเสีย'; // <--- ชื่อชีทใน Google Sheet (ต้องตรงเป๊ะ)
             const returnedDateObj = new Date(newReturnItem.returnedDate);
 
             if (sheetId && sheets) {
                 const rowData = [
-                    returnedDateObj.toLocaleDateString('th-TH'),
-                    returnedDateObj.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-                    newReturnItem.returnerName,
-                    newReturnItem.serialNumber
+                    returnedDateObj.toLocaleDateString('th-TH'), // วันที่
+                    returnedDateObj.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }), // เวลา
+                    newReturnItem.returnerName, // ชื่อผู้คืน
+                    String(newReturnItem.serialNumber) // <--- แก้ไขตรงนี้: แปลง Serial Number เป็น String ก่อนส่ง
                 ];
                 const appended = await appendRowToGoogleSheet(sheetId, sheetName, rowData);
                 if (!appended) {
@@ -154,9 +189,6 @@ router.put('/:id', asyncHandler(async (req, res) => {
     }
     res.json(updatedItem);
 }));
-
-// *** API Endpoint เดิมสำหรับลบทีละรายการ (ไม่ใช้แล้ว) ***
-// router.delete('/:id', asyncHandler(async (req, res) => { ... }));
 
 // NEW API ENDPOINT: ล้างประวัติการคืนของเสียทั้งหมด
 router.delete('/clear-all', asyncHandler(async (req, res) => {
