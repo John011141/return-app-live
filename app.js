@@ -2,50 +2,42 @@ require('dotenv').config();
 
 const express = require('express');
 const mongoose = require('mongoose');
-
-// ไม่ต้องประกาศ Google Sheets API client ที่นี่แล้ว เพราะย้ายไปที่ returnRoutes.js
-// const { google } = require('googleapis');
-// const path = require('path');
-// let auth, sheets;
-// if (process.env.GOOGLE_APPLICATION_CREDENTIALS) { ... }
-
-// require returnRoutes แบบปกติ เพราะตอนนี้ returnRoutes จะจัดการ Google Sheets API เองภายในไฟล์
-const returnRoutes = require('./routes/returnRoutes'); // <--- จุดสำคัญ: ไม่ต้องส่ง sheets object แล้ว
+const returnRoutes = require('./routes/returnRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-console.log('--- app.js STARTING ---');
-console.log('PORT from .env:', PORT);
+console.log('--- app.js STARTING (v2) ---'); // LOG 1: เพิ่ม v2
+console.log('PORT from .env:', PORT); // LOG 2
+console.log('Node.js version:', process.version); // LOG 3: ตรวจสอบเวอร์ชัน Node
 
 // Middleware
-app.use(express.json()); // สำหรับ Parse JSON body
+console.log('Setting up middleware...'); // LOG 4
+app.use(express.json());
+app.use(express.static('public')); // LOG 5
 
-// API Routes (ต้องอยู่ก่อน express.static)
-app.use('/api/returns', returnRoutes); // <--- จุดสำคัญ: ใช้ returnRoutes ที่ Export มาตรงๆ
-
-// Static Files (อยู่ด้านล่าง API routes)
-console.log('Setting up static files...');
-app.use(express.static('public'));
+// API Routes
+console.log('Setting up API routes...'); // LOG 6
+app.use('/api/returns', returnRoutes); // LOG 7
 
 
 // เชื่อมต่อ MongoDB
-console.log('Attempting to connect to MongoDB...');
-console.log('MONGO_URI from .env:', process.env.MONGO_URI);
+console.log('Attempting to connect to MongoDB...'); // LOG 8
+console.log('MONGO_URI from .env:', process.env.MONGO_URI); // LOG 9: ตรวจสอบค่า MONGO_URI อีกครั้ง
 mongoose.connect(process.env.MONGO_URI)
     .then(() => {
-        console.log('MongoDB connected successfully');
+        console.log('MongoDB connected successfully'); // LOG 10
     })
     .catch(err => {
-        console.error('*** MongoDB connection FAILED! ***');
-        console.error('Error details:', err);
-        // process.exit(1);
+        console.error('*** MongoDB connection FAILED! (v2) ***'); // LOG 11: Error message
+        console.error('Error details:', err); // LOG 12: Log full error details
+        process.exit(1); // บังคับให้โปรแกรมหยุด เพื่อให้เห็น Error ใน Terminal
     });
 
 // เริ่มต้น Server
-console.log('Attempting to start server...');
+console.log('Attempting to start server...'); // LOG 13
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`Server running on port ${PORT}`); // LOG 14
 });
 
-console.log('--- app.js END of main script ---');
+console.log('--- app.js END of main script (v2) ---'); // LOG 15
