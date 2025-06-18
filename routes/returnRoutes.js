@@ -39,16 +39,16 @@ const appendRowToGoogleSheet = async (sheetId, sheetName, rowData) => {
         const response = await sheets.spreadsheets.values.append({
             spreadsheetId: sheetId,
             range: `${sheetName}!A:A`,
-            valueInputOption: 'RAW', // 'RAW' จะรักษาประเภทข้อมูลที่เราส่งไป ถ้าส่ง string ไป มันก็จะเก็บเป็น string
+            valueInputOption: 'RAW',
             insertDataOption: 'INSERT_ROWS',
             resource: {
                 values: [rowData],
             },
         });
-        console.log(`Appended row to Google Sheet ${sheetId}/${sheetName}:`, response.data.updates.updatedRange);
+        console.log(`Appended row to Google Sheet <span class="math-inline">\{sheetId\}/</span>{sheetName}:`, response.data.updates.updatedRange);
         return true;
     } catch (error) {
-        console.error(`Failed to append row to Google Sheet ${sheetId}/${sheetName}:`, error.message, error.response ? error.response.data : '');
+        console.error(`Failed to append row to Google Sheet <span class="math-inline">\{sheetId\}/</span>{sheetName}:`, error.message, error.response ? error.response.data : '');
         return false;
     }
 };
@@ -87,8 +87,6 @@ router.post('/', asyncHandler(async (req, res) => {
             continue;
         }
 
-        // ตรวจสอบว่า serialNumber นี้ถูกคืนไปแล้วหรือไม่
-        // ตรวจสอบจาก trimmedSn ที่เป็น String อยู่แล้ว
         const existingReturn = await ReturnItem.findOne({ serialNumber: trimmedSn });
 
         if (existingReturn) {
@@ -98,11 +96,8 @@ router.post('/', asyncHandler(async (req, res) => {
         }
 
         try {
-            // สร้าง ReturnItem ใหม่
             const newReturnItem = new ReturnItem({
                 returnerName: returnerName,
-                // ตรวจสอบให้แน่ใจว่า serialNumber ที่เก็บใน MongoDB เป็น String
-                // จาก Schema ของ ReturnItem ก็ควรจะเป็น String อยู่แล้ว
                 serialNumber: trimmedSn,
                 returnedDate: new Date()
             });
@@ -114,17 +109,17 @@ router.post('/', asyncHandler(async (req, res) => {
                 returnedDate: newReturnItem.returnedDate
             });
 
-            // *** ส่วนที่แก้ไข: เขียนลง Google Sheet ***
+            // *** เพิ่มโค้ดตรงนี้: เขียนลง Google Sheet ***
             const sheetId = process.env.GOOGLE_SHEET_HISTORY_ID;
             const sheetName = 'ประวัติการคืนของเสีย'; // <--- ชื่อชีทใน Google Sheet (ต้องตรงเป๊ะ)
             const returnedDateObj = new Date(newReturnItem.returnedDate);
 
             if (sheetId && sheets) {
                 const rowData = [
-                    returnedDateObj.toLocaleDateString('th-TH'), // วันที่
-                    returnedDateObj.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }), // เวลา
-                    newReturnItem.returnerName, // ชื่อผู้คืน
-                    String(newReturnItem.serialNumber) // <--- แก้ไขตรงนี้: แปลง Serial Number เป็น String ก่อนส่ง
+                    returnedDateObj.toLocaleDateString('th-TH'),
+                    returnedDateObj.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+                    newReturnItem.returnerName,
+                    newReturnItem.serialNumber
                 ];
                 const appended = await appendRowToGoogleSheet(sheetId, sheetName, rowData);
                 if (!appended) {
@@ -160,6 +155,9 @@ router.put('/:id', asyncHandler(async (req, res) => {
     res.json(updatedItem);
 }));
 
+// *** API Endpoint เดิมสำหรับลบทีละรายการ (ไม่ใช้แล้ว) ***
+// router.delete('/:id', asyncHandler(async (req, res) => { ... }));
+
 // NEW API ENDPOINT: ล้างประวัติการคืนของเสียทั้งหมด
 router.delete('/clear-all', asyncHandler(async (req, res) => {
     const { password } = req.body; // รหัสผ่านที่ส่งมาจาก Frontend
@@ -172,7 +170,7 @@ router.delete('/clear-all', asyncHandler(async (req, res) => {
     }
 
     if (!password || password !== ADMIN_DELETE_PASSWORD) {
-        return res.status(401).json({ message: 'Unauthorized: Incorrect password.' }`+`);
+        return res.status(401).json({ message: 'Unauthorized: Incorrect password.' });
     }
 
     // หากรหัสผ่านถูกต้อง -> ลบข้อมูลทั้งหมด
